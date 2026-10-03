@@ -1,0 +1,25 @@
+Initialized native services in: /home/codespace/.gradle/native
+Initialized jansi services in: /home/codespace/.gradle/native
+The client will now receive all logging from the daemon (pid: 4153). The daemon log file: /home/codespace/.gradle/daemon/8.14.3/daemon-4153.out.log
+Starting 4th build in daemon [uptime: 5 mins 31.599 secs, performance: 99%, GC rate: 0.00/s, heap usage: 0% of 3 GiB]
+Using 2 worker leases.
+Not watching /workspaces/Visitas-Mass since the file system is not supported
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Caching disabled for Kotlin DSL script compilation (Settings/TopLevel/stage1) because:
+  Build cache is disabled
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+25.0.4.1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s
+Some of the file system contents retained in the virtual file system are on file systems that Gradle doesn't support watching. The relevant state was discarded to ensure changes to these locations are properly detected. You can override this by explicitly enabling file system watching.
