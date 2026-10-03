@@ -61,7 +61,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -135,8 +135,8 @@ private fun MassApp() {
                         val icon = when (page) {
                             "Dashboard" -> Icons.Default.Assessment
                             "Nueva visita" -> Icons.Default.Storefront
-                            "Seguimiento" -> Icons.Filled.Assignment
-                            "Memorándum" -> Icons.Filled.ListAlt
+                            "Seguimiento" -> Icons.Default.Assignment
+                            "Memorándum" -> Icons.Default.ListAlt
                             "Historial" -> Icons.Default.History
                             else -> Icons.Default.Edit
                         }
@@ -153,14 +153,14 @@ private fun MassApp() {
             Scaffold(
                 containerColor = Canvas,
                 topBar = {
-                    SmallTopAppBar(
+                    TopAppBar(
                         title = { Text(destination, fontWeight = FontWeight.Bold, color = Color.White) },
                         navigationIcon = {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                 Icon(Icons.Default.Menu, "Abrir menú", tint = Color.White)
                             }
                         },
-                        colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = MassBlue),
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MassBlue),
                     )
                 },
                 floatingActionButton = {
