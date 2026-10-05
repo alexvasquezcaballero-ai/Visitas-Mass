@@ -59,6 +59,7 @@ object VisitStore {
         "7. Limpieza de tienda",
         "8. Cartelería",
         "9. Seguimiento y comunicación interna",
+        "10. Personas y presentación personal",
     )
 
     private val starterQuestions = listOf(
@@ -71,13 +72,22 @@ object VisitStore {
         "Validar limpieza general de sala de ventas, pisos, góndolas, equipos, cajas y zonas visibles al cliente.",
         "Carteles promocionales vigentes.",
         "Memo semanal, conocimiento del equipo y visita del Supervisor Zonal.",
+        "Validar uso correcto del uniforme: polo, pantalón, calzado, mandil, presentación personal y cumplimiento de lineamientos.",
     )
 
     fun load(context: Context): Pair<List<StoreVisit>, List<ChecklistQuestion>> {
         val prefs = context.getSharedPreferences("visitas_mass", Context.MODE_PRIVATE)
         val visits = runCatching { decodeVisits(prefs.getString("visits", "[]").orEmpty()) }.getOrDefault(emptyList())
-        val questions = runCatching { decodeQuestions(prefs.getString("questions", null)) }
+        var questions = runCatching { decodeQuestions(prefs.getString("questions", null)) }
             .getOrElse { defaultQuestions() }
+        // Migración: incorpora la pregunta de uniforme también a instalaciones que ya tenían un checklist guardado.
+        if (questions.none { it.text.contains("uso correcto del uniforme", ignoreCase = true) }) {
+            questions = questions + ChecklistQuestion(
+                section = "10. Personas y presentación personal",
+                text = "Validar uso correcto del uniforme: polo, pantalón, calzado, mandil, presentación personal y cumplimiento de lineamientos."
+            )
+            saveQuestions(context, questions)
+        }
         return visits to questions
     }
 
