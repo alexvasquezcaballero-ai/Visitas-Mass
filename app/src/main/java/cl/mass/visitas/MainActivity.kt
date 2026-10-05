@@ -90,6 +90,7 @@ import cl.mass.visitas.data.ChecklistAnswer
 import cl.mass.visitas.data.ChecklistQuestion
 import cl.mass.visitas.data.StoreVisit
 import cl.mass.visitas.data.VisitStore
+import cl.mass.visitas.data.StoreDirectory
 import kotlinx.coroutines.launch
 
 private val MassBlue = Color(0xFF123B73)
@@ -276,6 +277,8 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
     var target by remember { mutableStateOf("") }
     var actual by remember { mutableStateOf("") }
     var customers by remember { mutableStateOf("") }
+    var shrink by remember { mutableStateOf("") }
+    var ageMonths by remember { mutableStateOf("") }
     val answers = remember { mutableStateMapOf<String, ChecklistAnswer>() }
     var editingQuestion by remember { mutableStateOf<ChecklistQuestion?>(null) }
     var error by remember { mutableStateOf(false) }
@@ -283,9 +286,9 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
     PageColumn(modifier) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp)) {
             item { Text("Datos de la visita", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
-            item { FormField("Jefe de Ventas", salesLead, { salesLead = it }) }
-            item { FormField("Supervisor Zonal", supervisor, { supervisor = it }) }
-            item { FormField("Tienda", store, { store = it }) }
+            item { SelectionField("Jefe de Ventas *", salesLead, StoreDirectory.salesLeads) { salesLead = it; supervisor = ""; store = "" } }
+            item { SelectionField("Supervisor Zonal *", supervisor, StoreDirectory.supervisors(salesLead), enabled = salesLead.isNotBlank()) { supervisor = it; store = "" } }
+            item { SelectionField("Tienda *", store, StoreDirectory.stores(salesLead, supervisor), enabled = supervisor.isNotBlank()) { store = it } }
             item { FormField("Administrador", administrator, { administrator = it }) }
             item { FormField("Fecha (AAAA-MM-DD)", date, { date = it }) }
             item { Text("Indicadores", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
@@ -294,6 +297,10 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
                 FormField("Venta real", actual, { actual = it }, Modifier.weight(1f), numeric = true)
             } }
             item { FormField("Clientes atendidos", customers, { customers = it }, numeric = true) }
+            item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FormField("Merma del periodo (%)", shrink, { shrink = it }, Modifier.weight(1f), numeric = true)
+                FormField("Antigüedad (meses)", ageMonths, { ageMonths = it }, Modifier.weight(1f), numeric = true)
+            } }
             item { Text("Checklist", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp)) }
             VisitStore.sections.forEach { section ->
                 val sectionQuestions = VisitStore.activeQuestions(questions).filter { it.section == section }
@@ -598,6 +605,20 @@ private fun QuestionEditorDialog(question: ChecklistQuestion, creating: Boolean,
         confirmButton = { TextButton(enabled = text.isNotBlank(), onClick = { onSave(question.copy(section = section, text = text.trim())) }) { Text("Guardar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
+}
+
+
+@Composable
+private fun SelectionField(label:String, value:String, options:List<String>, enabled:Boolean=true, onSelect:(String)->Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick={ if(enabled) open=true }, enabled=enabled, modifier=Modifier.fillMaxWidth()) {
+            Text(if(value.isBlank()) if(enabled) "Seleccionar..." else "Seleccionar anterior primero..." else value, modifier=Modifier.weight(1f))
+        }
+        DropdownMenu(expanded=open, onDismissRequest={open=false}) {
+            options.forEach { option -> DropdownMenuItem(text={Text(option)}, onClick={onSelect(option);open=false}) }
+        }
+    }
 }
 
 @Composable
