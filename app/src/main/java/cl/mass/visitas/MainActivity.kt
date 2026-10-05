@@ -422,6 +422,15 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
     var responsible by remember(question.id) { mutableStateOf(initial.responsible) }
     var dueDate by remember(question.id) { mutableStateOf(initial.dueDate) }
     var photoUri by remember(question.id) { mutableStateOf(initial.photoUri) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) {
+            runCatching {
+                val file = java.io.File(context.filesDir, "visita_${question.id}_${System.currentTimeMillis()}.jpg")
+                java.io.FileOutputStream(file).use { out -> bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out) }
+                photoUri = file.absolutePath
+            }
+        }
+    }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -438,13 +447,22 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
                 item { FormField(if (initial.status == "Conforme") "Oportunidad de mejora (opcional)" else "Acción correctiva", action, { action = it }, singleLine = false) }
                 item { FormField("Responsable", responsible, { responsible = it }) }
                 item { FormField("Fecha compromiso (AAAA-MM-DD)", dueDate, { dueDate = it }) }
-                item { OutlinedButton(onClick = { photoPicker.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.PhotoCamera, null); Spacer(Modifier.width(8.dp)); Text(if (photoUri.isBlank()) "Adjuntar fotografía" else "Fotografía adjunta")
-                } }
+                item {
+                    Text("Evidencia fotográfica (opcional)", fontSize = 12.sp, color = Color(0xFF667085))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = { cameraLauncher.launch(null) }, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.PhotoCamera, null); Spacer(Modifier.width(5.dp)); Text("Tomar foto", fontSize = 12.sp)
+                        }
+                        OutlinedButton(onClick = { photoPicker.launch(arrayOf("image/*")) }, modifier = Modifier.weight(1f)) {
+                            Text("Galería", fontSize = 12.sp)
+                        }
+                    }
+                    if (photoUri.isNotBlank()) Text("✓ Fotografía adjunta", color = Color(0xFF067647), fontSize = 12.sp)
+                }
             }
         },
         confirmButton = { TextButton(onClick = { onSave(initial.copy(status = initial.status, observation = observation,
-            correctiveAction = action, responsible = responsible, dueDate = dueDate, photoUri = photoUri)) }) { Text("Guardar hallazgo") } },
+            correctiveAction = action, responsible = responsible, dueDate = dueDate, photoUri = photoUri)) }) { Text(if (initial.status == "Conforme") "Guardar detalle" else "Guardar hallazgo") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
 }
