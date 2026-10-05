@@ -341,7 +341,7 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
                     val answer = answers[question.id] ?: ChecklistAnswer()
                     QuestionAnswerRow(question, answer, onStatus = { status ->
                         answers[question.id] = answer.copy(status = status)
-                        if (status == "No Conforme") editingQuestion = question
+                        if (status == "No Conforme" || status == "Conforme") editingQuestion = question
                     }, onEdit = { editingQuestion = question })
                 }
             }
@@ -402,12 +402,13 @@ private fun QuestionAnswerRow(question: ChecklistQuestion, answer: ChecklistAnsw
             listOf("Conforme", "No Conforme", "N/A").forEach { status ->
                 FilterChip(selected = answer.status == status, onClick = { onStatus(status) }, label = { Text(status, fontSize = 11.sp) })
             }
-            if (answer.status == "No Conforme") IconButton(onClick = onEdit, modifier = Modifier.size(38.dp)) {
+            if (answer.status == "No Conforme" || answer.status == "Conforme") IconButton(onClick = onEdit, modifier = Modifier.size(38.dp)) {
                 Icon(Icons.Default.Edit, "Editar hallazgo", tint = MassBlue, modifier = Modifier.size(19.dp))
             }
         }
-        if (answer.status == "No Conforme") {
-            Text("${if (answer.photoUri.isNotBlank()) "Foto adjunta · " else ""}${answer.observation.ifBlank { "Agregar observación y acción" }}",
+        if (answer.status == "No Conforme" || answer.status == "Conforme") {
+            val helper = if (answer.status == "Conforme") "Agregar detalle de lo encontrado conforme, mejora opcional y foto" else "Agregar observación, acción y foto"
+            Text("${if (answer.photoUri.isNotBlank()) "Foto adjunta · " else ""}${answer.observation.ifBlank { helper }}",
                 color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.clickable(onClick = onEdit))
         }
     }
@@ -429,12 +430,12 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Hallazgo", fontWeight = FontWeight.Bold) },
+        title = { Text(if (initial.status == "Conforme") "Detalle de conformidad" else "Hallazgo", fontWeight = FontWeight.Bold) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 item { Text(question.text, color = MassBlue, fontWeight = FontWeight.Medium) }
-                item { FormField("Observación", observation, { observation = it }, singleLine = false) }
-                item { FormField("Acción correctiva", action, { action = it }, singleLine = false) }
+                item { FormField(if (initial.status == "Conforme") "Detalle de lo encontrado conforme" else "Observación", observation, { observation = it }, singleLine = false) }
+                item { FormField(if (initial.status == "Conforme") "Oportunidad de mejora (opcional)" else "Acción correctiva", action, { action = it }, singleLine = false) }
                 item { FormField("Responsable", responsible, { responsible = it }) }
                 item { FormField("Fecha compromiso (AAAA-MM-DD)", dueDate, { dueDate = it }) }
                 item { OutlinedButton(onClick = { photoPicker.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) {
@@ -442,7 +443,7 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
                 } }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(initial.copy(status = "No Conforme", observation = observation,
+        confirmButton = { TextButton(onClick = { onSave(initial.copy(status = initial.status, observation = observation,
             correctiveAction = action, responsible = responsible, dueDate = dueDate, photoUri = photoUri)) }) { Text("Guardar hallazgo") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
