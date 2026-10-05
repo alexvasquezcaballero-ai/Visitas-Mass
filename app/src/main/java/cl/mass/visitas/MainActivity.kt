@@ -214,7 +214,7 @@ private fun DashboardScreen(visits: List<StoreVisit>, questions: List<ChecklistQ
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("Visitas", visits.size.toString(), Icons.Default.Storefront, Modifier.weight(1f))
-            MetricTile("Hallazgos", findings.toString(), Icons.Filled.Assignment, Modifier.weight(1f))
+            MetricTile("Hallazgos", findings.toString(), Icons.Default.Assignment, Modifier.weight(1f))
             MetricTile("Conformidad", "$conformity%", Icons.Default.Check, Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
@@ -584,7 +584,7 @@ private fun HistoryScreen(visits: List<StoreVisit>, questions: List<ChecklistQue
         if (visits.isEmpty()) EmptyState("Historial vacío", "Usa + para registrar una visita.")
         else LazyColumn {
             items(visits, key = { it.id }) { visit -> VisitRow(visit, questions) {
-                IconButton(onClick = { onMemo(visit.id) }) { Icon(Icons.Filled.ListAlt, "Ver memorándum", tint = MassBlue) }
+                IconButton(onClick = { onMemo(visit.id) }) { Icon(Icons.Default.ListAlt, "Ver memorándum", tint = MassBlue) }
             } }
         }
     }
