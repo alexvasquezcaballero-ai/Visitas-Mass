@@ -23,6 +23,12 @@ data class ChecklistAnswer(
     val completed: Boolean = false,
 )
 
+data class StockBreak(
+    val code: String = "",
+    val description: String = "",
+    val status: String = "Activo",
+)
+
 data class StoreVisit(
     val id: String = UUID.randomUUID().toString(),
     val salesLead: String = "",
@@ -33,6 +39,12 @@ data class StoreVisit(
     val salesTarget: String = "",
     val salesActual: String = "",
     val customerCount: String = "",
+    val shrinkPercent: String = "",
+    val ageMonths: String = "",
+    val visitBookStatus: String = "",
+    val visitBookObservation: String = "",
+    val summaryCommitments: String = "",
+    val stockBreaks: List<StockBreak> = emptyList(),
     val answers: Map<String, ChecklistAnswer> = emptyMap(),
 )
 
@@ -94,6 +106,12 @@ object VisitStore {
         put("id", visit.id); put("salesLead", visit.salesLead); put("zonalSupervisor", visit.zonalSupervisor)
         put("store", visit.store); put("administrator", visit.administrator); put("date", visit.date)
         put("salesTarget", visit.salesTarget); put("salesActual", visit.salesActual); put("customerCount", visit.customerCount)
+        put("shrinkPercent", visit.shrinkPercent); put("ageMonths", visit.ageMonths)
+        put("visitBookStatus", visit.visitBookStatus); put("visitBookObservation", visit.visitBookObservation)
+        put("summaryCommitments", visit.summaryCommitments)
+        put("stockBreaks", JSONArray().apply { visit.stockBreaks.forEach { b -> put(JSONObject().apply {
+            put("code", b.code); put("description", b.description); put("status", b.status)
+        }) } })
         put("answers", JSONObject().apply {
             visit.answers.forEach { (id, answer) -> put(id, JSONObject().apply {
                 put("status", answer.status); put("observation", answer.observation); put("correctiveAction", answer.correctiveAction)
@@ -113,10 +131,21 @@ object VisitStore {
                     value.optString("correctiveAction"), value.optString("responsible"), value.optString("dueDate"),
                     value.optString("photoUri"), value.optBoolean("completed", false))
             }
-            StoreVisit(item.optString("id", UUID.randomUUID().toString()), item.optString("salesLead"),
-                item.optString("zonalSupervisor"), item.optString("store"), item.optString("administrator"),
-                item.optString("date", LocalDate.now().toString()), item.optString("salesTarget"),
-                item.optString("salesActual"), item.optString("customerCount"), answers)
+            val breaksJson = item.optJSONArray("stockBreaks") ?: JSONArray()
+            val stockBreaks = (0 until breaksJson.length()).map { i ->
+                val b = breaksJson.getJSONObject(i)
+                StockBreak(b.optString("code"), b.optString("description"), b.optString("status", "Activo"))
+            }
+            StoreVisit(
+                id = item.optString("id", UUID.randomUUID().toString()),
+                salesLead = item.optString("salesLead"), zonalSupervisor = item.optString("zonalSupervisor"),
+                store = item.optString("store"), administrator = item.optString("administrator"),
+                date = item.optString("date", LocalDate.now().toString()), salesTarget = item.optString("salesTarget"),
+                salesActual = item.optString("salesActual"), customerCount = item.optString("customerCount"),
+                shrinkPercent = item.optString("shrinkPercent"), ageMonths = item.optString("ageMonths"),
+                visitBookStatus = item.optString("visitBookStatus"), visitBookObservation = item.optString("visitBookObservation"),
+                summaryCommitments = item.optString("summaryCommitments"), stockBreaks = stockBreaks, answers = answers
+            )
         }
     }
 
