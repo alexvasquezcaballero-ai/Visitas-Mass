@@ -17,8 +17,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk VisitasMass.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk VisitasMass-v16-Camara-Conforme.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: VisitasMass-v15-Camara-Conforme
-          path: VisitasMass-v15-Camara-Conforme.apk
+          name: VisitasMass-v16-Camara-Conforme
+          path: VisitasMass-v16-Camara-Conforme.apk
