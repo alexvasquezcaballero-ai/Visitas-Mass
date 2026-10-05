@@ -38,22 +38,27 @@ data class StoreVisit(
 
 object VisitStore {
     val sections = listOf(
-        "Cliente y Venta",
-        "Ejecución Comercial",
-        "Merma",
-        "Inventario y Trastienda",
-        "Procesos y Seguridad",
-        "Personas y Gestión",
+        "1. Fachada e ingreso",
+        "2. Atención al cliente y protocolo de cajas",
+        "3. Zona de cajas",
+        "4. Reposición y exhibición de mercadería",
+        "5. Equipos de frío",
+        "6. Almacén, oficina y baños",
+        "7. Limpieza de tienda",
+        "8. Cartelería",
+        "9. Seguimiento y comunicación interna",
     )
 
     private val starterQuestions = listOf(
-        "Atención y experiencia del cliente", "Conocimiento de metas y resultados", "Venta sugerida y disponibilidad de productos",
-        "Precios y promociones correctamente señalizados", "Exhibiciones completas y planograma vigente", "Frentes ordenados y productos disponibles",
-        "Productos dañados o vencidos identificados", "Registros de merma completos y al día", "Conteos cíclicos realizados según programa",
-        "Bodega ordenada, limpia y con pasillos despejados", "Recepción y almacenamiento según procedimiento", "Extintores y rutas de evacuación despejados",
-        "Apertura y cierre ejecutados según pauta", "Registros operacionales completos y firmados", "Dotación, turnos y asistencia revisados",
-        "Roles, metas y prioridades comunicados al equipo", "Retroalimentación y capacitación del equipo revisadas",
-        "Incidentes, reconocimientos y acuerdos con seguimiento",
+        "Limpieza y presentación de fachada.",
+        "Validar saludo al cliente, timbrado/reconocimiento mediante DNI e incentivo del cajero para el pago con SIP.",
+        "Orden, limpieza, coches y bolsas.",
+        "Reposición, stock, precios y espacios vacíos.",
+        "Temperatura, reposición y exhibición.",
+        "Orden y limpieza del almacén, control de sobrestock, orden de oficina y estado/orden de baños.",
+        "Validar limpieza general de sala de ventas, pisos, góndolas, equipos, cajas y zonas visibles al cliente.",
+        "Carteles promocionales vigentes.",
+        "Memo semanal, conocimiento del equipo y visita del Supervisor Zonal.",
     )
 
     fun load(context: Context): Pair<List<StoreVisit>, List<ChecklistQuestion>> {
@@ -82,7 +87,7 @@ object VisitStore {
         }
 
     private fun defaultQuestions() = starterQuestions.mapIndexed { index, text ->
-        ChecklistQuestion(section = sections[index / 3], text = text)
+        ChecklistQuestion(section = sections[index.coerceAtMost(sections.lastIndex)], text = text)
     }
 
     private fun encodeVisit(visit: StoreVisit) = JSONObject().apply {
