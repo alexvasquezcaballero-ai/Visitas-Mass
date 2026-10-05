@@ -91,6 +91,7 @@ import cl.mass.visitas.data.ChecklistQuestion
 import cl.mass.visitas.data.StoreVisit
 import cl.mass.visitas.data.VisitStore
 import cl.mass.visitas.data.StoreDirectory
+import cl.mass.visitas.data.StockBreak
 import kotlinx.coroutines.launch
 
 private val MassBlue = Color(0xFF123B73)
@@ -279,6 +280,13 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
     var customers by remember { mutableStateOf("") }
     var shrink by remember { mutableStateOf("") }
     var ageMonths by remember { mutableStateOf("") }
+    var breakCode by remember { mutableStateOf("") }
+    var breakDescription by remember { mutableStateOf("") }
+    var breakStatus by remember { mutableStateOf("Activo") }
+    val stockBreaks = remember { mutableStateListOf<StockBreak>() }
+    var visitBookStatus by remember { mutableStateOf("") }
+    var visitBookObservation by remember { mutableStateOf("") }
+    var summaryCommitments by remember { mutableStateOf("") }
     val answers = remember { mutableStateMapOf<String, ChecklistAnswer>() }
     var editingQuestion by remember { mutableStateOf<ChecklistQuestion?>(null) }
     var error by remember { mutableStateOf(false) }
@@ -296,7 +304,7 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
                 FormField("Meta de venta", target, { target = it }, Modifier.weight(1f), numeric = true)
                 FormField("Venta real", actual, { actual = it }, Modifier.weight(1f), numeric = true)
             } }
-            item { FormField("Clientes atendidos", customers, { customers = it }, numeric = true) }
+            item { FormField("Venta del periodo (S/)", actual, { actual = it }, numeric = true) }
             item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FormField("Merma del periodo (%)", shrink, { shrink = it }, Modifier.weight(1f), numeric = true)
                 FormField("Antigüedad (meses)", ageMonths, { ageMonths = it }, Modifier.weight(1f), numeric = true)
@@ -313,13 +321,45 @@ private fun NewVisitScreen(questions: List<ChecklistQuestion>, onSave: (StoreVis
                     }, onEdit = { editingQuestion = question })
                 }
             }
+            item { Text("Quiebres de mercadería", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp)) }
+            item { FormField("Código", breakCode, { breakCode = it }) }
+            item { FormField("Descripción", breakDescription, { breakDescription = it }) }
+            item { SelectionField("Estado", breakStatus, listOf("Bloqueado", "Obsoleto", "Inactivo", "Activo")) { breakStatus = it } }
+            item {
+                OutlinedButton(onClick = {
+                    if (breakCode.isNotBlank() || breakDescription.isNotBlank()) {
+                        stockBreaks.add(StockBreak(breakCode.trim(), breakDescription.trim(), breakStatus))
+                        breakCode = ""; breakDescription = ""; breakStatus = "Activo"
+                    }
+                }, modifier = Modifier.fillMaxWidth()) { Text("+ Agregar quiebre") }
+            }
+            items(stockBreaks) { b ->
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Text("${b.code} · ${b.description}", fontWeight = FontWeight.SemiBold)
+                        Text("${store.ifBlank { "Sin tienda" }} · ${b.status}", fontSize = 12.sp, color = Color(0xFF667085))
+                    }
+                }
+            }
+            item { Text("Cuaderno de visitas", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp)) }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = visitBookStatus == "Sí", onClick = { visitBookStatus = "Sí" }, label = { Text("Sí, se registró") })
+                    FilterChip(selected = visitBookStatus == "No", onClick = { visitBookStatus = "No" }, label = { Text("No se registró") })
+                }
+            }
+            item { FormField("Observación sobre el cuaderno", visitBookObservation, { visitBookObservation = it }) }
+            item { Text("Resumen / compromisos", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp)) }
+            item { FormField("Acuerdos, responsable y fecha de regularización", summaryCommitments, { summaryCommitments = it }) }
             item {
                 if (error) Text("Completa Jefe de Ventas, Supervisor, Tienda y Administrador.", color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                 Button(onClick = {
                     if (salesLead.isBlank() || supervisor.isBlank() || store.isBlank() || administrator.isBlank()) error = true
                     else onSave(StoreVisit(salesLead = salesLead, zonalSupervisor = supervisor, store = store,
                         administrator = administrator, date = date, salesTarget = target, salesActual = actual,
-                        customerCount = customers, answers = answers.toMap()))
+                        customerCount = customers, shrinkPercent = shrink, ageMonths = ageMonths,
+                        visitBookStatus = visitBookStatus, visitBookObservation = visitBookObservation,
+                        summaryCommitments = summaryCommitments, stockBreaks = stockBreaks.toList(), answers = answers.toMap()))
                 }, modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) { Text("Guardar visita") }
             }
         }
