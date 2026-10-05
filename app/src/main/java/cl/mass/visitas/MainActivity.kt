@@ -199,34 +199,58 @@ private fun PageColumn(modifier: Modifier = Modifier, content: @Composable andro
 
 @Composable
 private fun DashboardScreen(visits: List<StoreVisit>, questions: List<ChecklistQuestion>, modifier: Modifier = Modifier) {
-    val findings = visits.sumOf { VisitStore.findings(it, questions).size }
-    val openActions = visits.sumOf { VisitStore.findings(it, questions).count { pair -> !pair.second.completed } }
+    val allFindings = visits.flatMap { visit -> VisitStore.findings(visit, questions).map { Triple(visit, it.first, it.second) } }
+    val findings = allFindings.size
+    val openActions = allFindings.count { !it.third.completed }
+    val totalAnswers = visits.sumOf { it.answers.values.count { a -> a.status != "N/A" } }
+    val conformity = if (totalAnswers == 0) 0 else ((totalAnswers - findings) * 100 / totalAnswers)
+    val recurring = allFindings.groupBy { it.second.section }.mapValues { it.value.size }.entries.sortedByDescending { it.value }
+    val storeRanking = allFindings.groupBy { it.first.store }.mapValues { it.value.size }.entries.sortedByDescending { it.value }
+    val leadRanking = allFindings.groupBy { it.first.salesLead }.mapValues { it.value.size }.entries.sortedByDescending { it.value }
+
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp)) {
-        Text("Hola, equipo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Resumen de visitas gerenciales", color = Color(0xFF667085))
+        Text("Dashboard gerencial", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Recurrencias y prioridades de acción", color = Color(0xFF667085))
         Spacer(Modifier.height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile("Visitas", visits.size.toString(), Icons.Default.Storefront, Modifier.weight(1f))
             MetricTile("Hallazgos", findings.toString(), Icons.Filled.Assignment, Modifier.weight(1f))
-            MetricTile("Acciones", openActions.toString(), Icons.Default.Check, Modifier.weight(1f))
+            MetricTile("Conformidad", "$conformity%", Icons.Default.Check, Modifier.weight(1f))
         }
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(8.dp))
+        Text("$openActions acciones pendientes", color = if (openActions > 0) Color(0xFFB54708) else Color(0xFF067647), fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(20.dp))
+        SectionTitle("Pareto de observaciones")
+        if (recurring.isEmpty()) Text("Se alimentará automáticamente con las visitas.", color = Color(0xFF667085))
+        else recurring.take(6).forEachIndexed { index, item ->
+            val pct = if (findings == 0) 0 else item.value * 100 / findings
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${index + 1}. ${item.key}", Modifier.weight(1f), fontSize = 13.sp)
+                Text("${item.value} · $pct%", fontWeight = FontWeight.Bold, color = MassBlue)
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        SectionTitle("Tiendas con mayor recurrencia")
+        storeRanking.take(5).forEach { item ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                Text(item.key.ifBlank { "Sin tienda" }, Modifier.weight(1f), fontSize = 13.sp)
+                Text("${item.value} hallazgos", fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        SectionTitle("Hallazgos por Jefe de Ventas")
+        leadRanking.forEach { item ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                Text(item.key.ifBlank { "Sin jefe" }, Modifier.weight(1f), fontSize = 13.sp)
+                Text(item.value.toString(), fontWeight = FontWeight.Bold, color = MassBlue)
+            }
+        }
+        Spacer(Modifier.height(18.dp))
         SectionTitle("Actividad reciente")
         if (visits.isEmpty()) EmptyState("Aún no hay visitas", "Registra la primera visita para comenzar.")
         else visits.take(5).forEach { VisitRow(it, questions) }
-        Spacer(Modifier.height(16.dp))
-        SectionTitle("Áreas evaluadas")
-        VisitStore.sections.forEach { section ->
-            val count = questions.count { it.section == section && it.active }
-            Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).background(MassYellow, RoundedCornerShape(50)))
-                Text(section, Modifier.weight(1f).padding(start = 10.dp), fontWeight = FontWeight.Medium)
-                Text("$count preguntas", color = Color(0xFF667085), fontSize = 12.sp)
-            }
-        }
     }
 }
-
 @Composable
 private fun MetricTile(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     Card(modifier, shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
