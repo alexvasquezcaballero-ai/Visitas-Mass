@@ -176,7 +176,7 @@ private fun MassApp() {
                 when (destination) {
                     "Dashboard" -> DashboardScreen(visits, questions, Modifier.padding(padding))
                     "Nueva visita" -> NewVisitScreen(questions, { visit ->
-                        visits.add(0, visit); VisitStore.saveVisits(context, visits); selectedVisitId = visit.id; destination = "Historial"
+                        visits.add(0, visit); VisitStore.saveVisits(context, visits); selectedVisitId = visit.id; destination = "Memorándum"
                     }, Modifier.padding(padding))
                     "Seguimiento" -> FollowUpScreen(visits, questions, { updated ->
                         val index = visits.indexOfFirst { it.id == updated.id }
@@ -408,7 +408,7 @@ private fun QuestionAnswerRow(question: ChecklistQuestion, answer: ChecklistAnsw
         }
         if (answer.status == "No Conforme" || answer.status == "Conforme") {
             val helper = if (answer.status == "Conforme") "Agregar detalle de lo encontrado conforme, mejora opcional y foto" else "Agregar observación, acción y foto"
-            Text("${if (answer.photoUri.isNotBlank()) "Foto adjunta · " else ""}${answer.observation.ifBlank { helper }}",
+            Text("${if (answer.photoUris.isNotEmpty() || answer.photoUri.isNotBlank()) "Foto(s) adjunta(s) · " else ""}${answer.observation.ifBlank { helper }}",
                 color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.clickable(onClick = onEdit))
         }
     }
@@ -421,20 +421,20 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
     var action by remember(question.id) { mutableStateOf(initial.correctiveAction) }
     var responsible by remember(question.id) { mutableStateOf(initial.responsible) }
     var dueDate by remember(question.id) { mutableStateOf(initial.dueDate) }
-    var photoUri by remember(question.id) { mutableStateOf(initial.photoUri) }
+    val photoUris = remember(question.id) { mutableStateListOf<String>().apply { addAll(initial.photoUris.ifEmpty { listOfNotNull(initial.photoUri.takeIf { it.isNotBlank() }) }) } }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         if (bitmap != null) {
             runCatching {
                 val file = java.io.File(context.filesDir, "visita_${question.id}_${System.currentTimeMillis()}.jpg")
                 java.io.FileOutputStream(file).use { out -> bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out) }
-                photoUri = file.absolutePath
+                photoUris.add(file.absolutePath)
             }
         }
     }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            photoUri = uri.toString()
+            photoUris.add(uri.toString())
         }
     }
     AlertDialog(
@@ -457,12 +457,12 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
                             Text("Galería", fontSize = 12.sp)
                         }
                     }
-                    if (photoUri.isNotBlank()) Text("✓ Fotografía adjunta", color = Color(0xFF067647), fontSize = 12.sp)
+                    if (photoUris.isNotEmpty()) Text("✓ ${photoUris.size} foto(s) adjunta(s)", color = Color(0xFF067647), fontSize = 12.sp)
                 }
             }
         },
         confirmButton = { TextButton(onClick = { onSave(initial.copy(status = initial.status, observation = observation,
-            correctiveAction = action, responsible = responsible, dueDate = dueDate, photoUri = photoUri)) }) { Text(if (initial.status == "Conforme") "Guardar detalle" else "Guardar hallazgo") } },
+            correctiveAction = action, responsible = responsible, dueDate = dueDate, photoUri = photoUris.firstOrNull().orEmpty(), photoUris = photoUris.toList())) }) { Text(if (initial.status == "Conforme") "Guardar detalle" else "Guardar hallazgo") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
 }
@@ -487,7 +487,7 @@ private fun FollowUpScreen(visits: List<StoreVisit>, questions: List<ChecklistQu
                         DetailLine("Acción", answer.correctiveAction)
                         DetailLine("Responsable", answer.responsible)
                         DetailLine("Compromiso", answer.dueDate)
-                        if (answer.photoUri.isNotBlank()) Text("Fotografía adjunta", color = MassBlue, fontSize = 12.sp)
+                        if (answer.photoUris.isNotEmpty() || answer.photoUri.isNotBlank()) Text("${answer.photoUris.ifEmpty { listOf(answer.photoUri) }.size} fotografía(s) adjunta(s)", color = MassBlue, fontSize = 12.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = answer.completed, onCheckedChange = { completed ->
                                 onVisitChange(visit.copy(answers = visit.answers + (question.id to answer.copy(completed = completed))))
@@ -538,7 +538,7 @@ private fun MemoScreen(visits: List<StoreVisit>, questions: List<ChecklistQuesti
                     context.startActivity(Intent.createChooser(send, "Compartir memorándum PDF"))
                 }
             }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Icon(Icons.Default.Share, null); Spacer(Modifier.width(8.dp)); Text("Generar y compartir PDF")
+                Icon(Icons.Default.Share, null); Spacer(Modifier.width(8.dp)); Text("GENERAR MEMORÁNDUM PDF")
             }
             Spacer(Modifier.height(12.dp))
             MemoDocument(visit, questions)
