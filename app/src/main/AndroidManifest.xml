@@ -3,6 +3,7 @@
         android:allowBackup="true"
         android:label="Visitas Mass"
         android:icon="@drawable/visitas_mass_icon"
+        android:roundIcon="@drawable/visitas_mass_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.VisitasMass">
         <activity
