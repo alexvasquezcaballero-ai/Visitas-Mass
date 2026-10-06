@@ -33,7 +33,7 @@ object MemoPdfExporter {
   if(visit.stockBreaks.isNotEmpty()){heading("Quiebres de mercadería");visit.stockBreaks.forEachIndexed{i,b->wrapped("${i+1}. ${b.description}  |  Código: ${b.code.ifBlank{"—"}}  |  Estado: ${b.status}")}}
   heading("Cuaderno de visitas");wrapped("Supervisor registrado: ${visit.visitBookStatus.ifBlank{"—"}}");if(visit.visitBookObservation.isNotBlank())wrapped(visit.visitBookObservation)
   heading("Resumen / compromisos");wrapped(visit.summaryCommitments)
-  val photos=active.mapNotNull{q->visit.answers[q.id]?.let{a->if(a.photoUri.isNotBlank())Triple(q,a,a.photoUri)else null}}
+  val photos=active.flatMap{q->visit.answers[q.id]?.let{a->a.photoUris.ifEmpty{listOfNotNull(a.photoUri.takeIf{it.isNotBlank()})}.map{u->Triple(q,a,u)}} ?: emptyList()}
   if(photos.isNotEmpty()){newPage();c!!.drawText("ANEXOS FOTOGRÁFICOS",M,y,Paint(bold).apply{color=blue;textSize=18f});y+=28
    photos.forEachIndexed{index,(q,a,u)->loadBitmap(context,u)?.let{bmp->val maxW=W-2*M;val scale=minOf(maxW/bmp.width.toFloat(),430f/bmp.height.toFloat(),1f);val dw=bmp.width*scale;val dh=bmp.height*scale;ensure(dh+70);c!!.drawBitmap(bmp,null,RectF(M,y,M+dw,y+dh),Paint(1));y+=dh+14;wrapped("Figura ${index+1}. ${q.section} — ${a.observation.ifBlank{q.text}}",Paint(body).apply{typeface=Typeface.create(Typeface.SANS_SERIF,Typeface.ITALIC)});y+=16;bmp.recycle()}}}
   page?.let{doc.finishPage(it)};val dir=File(context.cacheDir,"memos").apply{mkdirs()};val safe=visit.store.replace(Regex("[^A-Za-z0-9_-]"),"_").take(40);val f=File(dir,"Memo_${safe}_${visit.date}.pdf");FileOutputStream(f).use{doc.writeTo(it)};doc.close();return f
