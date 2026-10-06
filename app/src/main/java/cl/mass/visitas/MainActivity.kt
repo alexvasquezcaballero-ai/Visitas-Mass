@@ -525,15 +525,20 @@ private fun MemoScreen(visits: List<StoreVisit>, questions: List<ChecklistQuesti
                     visits.forEach { item -> DropdownMenuItem(text = { Text("${item.store} · ${item.date}") }, onClick = { currentId = item.id; expanded = false }) }
                 }
             }
-            OutlinedButton(onClick = {
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "Memorándum de visita · ${visit.store}")
-                    putExtra(Intent.EXTRA_TEXT, memoText(visit, questions))
+            Button(onClick = {
+                runCatching {
+                    val file = MemoPdfExporter.create(context, visit, questions)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/pdf"
+                        putExtra(Intent.EXTRA_SUBJECT, "Memorándum de visita · ${visit.store}")
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(send, "Compartir memorándum PDF"))
                 }
-                context.startActivity(Intent.createChooser(send, "Compartir memorándum"))
             }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Icon(Icons.Default.Share, null); Spacer(Modifier.width(8.dp)); Text("Compartir memorándum")
+                Icon(Icons.Default.Share, null); Spacer(Modifier.width(8.dp)); Text("Generar y compartir PDF")
             }
             Spacer(Modifier.height(12.dp))
             MemoDocument(visit, questions)
