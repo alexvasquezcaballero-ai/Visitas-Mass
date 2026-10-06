@@ -12,8 +12,8 @@ android {
         applicationId = "cl.mass.visitas"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 27
+        versionName = "1.0.27"
     }
 
     buildFeatures {
