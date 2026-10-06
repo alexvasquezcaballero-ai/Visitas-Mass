@@ -528,17 +528,34 @@ private fun MemoScreen(visits: List<StoreVisit>, questions: List<ChecklistQuesti
             Button(onClick = {
                 runCatching {
                     val file = MemoPdfExporter.create(context, visit, questions)
-                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/pdf"
-                        putExtra(Intent.EXTRA_SUBJECT, "Memorándum de visita · ${visit.store}")
-                        putExtra(Intent.EXTRA_STREAM, uri)
+                    val safeStore = visit.store.replace(Regex("[^A-Za-z0-9_-]"), "_").take(40)
+                    val fileName = "Memo_${safeStore}_${visit.date}.pdf"
+                    val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        val values = android.content.ContentValues().apply {
+                            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/Visitas Mass")
+                        }
+                        val outUri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                            ?: error("No se pudo crear el PDF en Descargas")
+                        context.contentResolver.openOutputStream(outUri)?.use { out ->
+                            file.inputStream().use { it.copyTo(out) }
+                        } ?: error("No se pudo guardar el PDF")
+                        outUri
+                    } else {
+                        androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    }
+                    android.widget.Toast.makeText(context, "PDF guardado en Descargas / Visitas Mass", android.widget.Toast.LENGTH_LONG).show()
+                    val openPdf = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "application/pdf")
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(Intent.createChooser(send, "Compartir memorándum PDF"))
+                    context.startActivity(Intent.createChooser(openPdf, "Abrir memorándum PDF"))
+                }.onFailure {
+                    android.widget.Toast.makeText(context, "Error al generar PDF: ${it.message}", android.widget.Toast.LENGTH_LONG).show()
                 }
             }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Icon(Icons.Default.Share, null); Spacer(Modifier.width(8.dp)); Text("GENERAR MEMORÁNDUM PDF")
+                Icon(Icons.Default.Assignment, null); Spacer(Modifier.width(8.dp)); Text("GENERAR Y ABRIR PDF")
             }
             Spacer(Modifier.height(12.dp))
             MemoDocument(visit, questions)
