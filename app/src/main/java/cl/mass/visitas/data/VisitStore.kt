@@ -20,6 +20,7 @@ data class ChecklistAnswer(
     val responsible: String = "",
     val dueDate: String = "",
     val photoUri: String = "",
+    val photoUris: List<String> = emptyList(),
     val completed: Boolean = false,
 )
 
@@ -126,6 +127,7 @@ object VisitStore {
             visit.answers.forEach { (id, answer) -> put(id, JSONObject().apply {
                 put("status", answer.status); put("observation", answer.observation); put("correctiveAction", answer.correctiveAction)
                 put("responsible", answer.responsible); put("dueDate", answer.dueDate); put("photoUri", answer.photoUri)
+                put("photoUris", JSONArray().apply { answer.photoUris.forEach { put(it) } })
                 put("completed", answer.completed)
             }) }
         })
@@ -137,9 +139,13 @@ object VisitStore {
             val answersJson = item.optJSONObject("answers") ?: JSONObject()
             val answers = answersJson.keys().asSequence().associateWith { key ->
                 val value = answersJson.getJSONObject(key)
+                val legacyPhoto = value.optString("photoUri")
+                val photosJson = value.optJSONArray("photoUris") ?: JSONArray()
+                val photos = (0 until photosJson.length()).map { i -> photosJson.optString(i) }.filter { it.isNotBlank() }
+                    .ifEmpty { if (legacyPhoto.isNotBlank()) listOf(legacyPhoto) else emptyList() }
                 ChecklistAnswer(value.optString("status", "N/A"), value.optString("observation"),
                     value.optString("correctiveAction"), value.optString("responsible"), value.optString("dueDate"),
-                    value.optString("photoUri"), value.optBoolean("completed", false))
+                    legacyPhoto, photos, value.optBoolean("completed", false))
             }
             val breaksJson = item.optJSONArray("stockBreaks") ?: JSONArray()
             val stockBreaks = (0 until breaksJson.length()).map { i ->
