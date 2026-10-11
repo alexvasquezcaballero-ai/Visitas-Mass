@@ -418,9 +418,6 @@ private fun QuestionAnswerRow(question: ChecklistQuestion, answer: ChecklistAnsw
 private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistAnswer, onDismiss: () -> Unit, onSave: (ChecklistAnswer) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var observation by remember(question.id) { mutableStateOf(initial.observation) }
-    var action by remember(question.id) { mutableStateOf(initial.correctiveAction) }
-    var responsible by remember(question.id) { mutableStateOf(initial.responsible) }
-    var dueDate by remember(question.id) { mutableStateOf(initial.dueDate) }
     val photoUris = remember(question.id) { mutableStateListOf<String>().apply { addAll(initial.photoUris.ifEmpty { listOfNotNull(initial.photoUri.takeIf { it.isNotBlank() }) }) } }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         if (bitmap != null) {
@@ -444,9 +441,6 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 item { Text(question.text, color = MassBlue, fontWeight = FontWeight.Medium) }
                 item { FormField(if (initial.status == "Conforme") "Detalle de lo encontrado conforme" else "Observación", observation, { observation = it }, singleLine = false) }
-                item { FormField(if (initial.status == "Conforme") "Oportunidad de mejora (opcional)" else "Acción correctiva", action, { action = it }, singleLine = false) }
-                item { FormField("Responsable", responsible, { responsible = it }) }
-                item { FormField("Fecha compromiso (AAAA-MM-DD)", dueDate, { dueDate = it }) }
                 item {
                     Text("Evidencia fotográfica (opcional)", fontSize = 12.sp, color = Color(0xFF667085))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -462,7 +456,7 @@ private fun FindingEditorDialog(question: ChecklistQuestion, initial: ChecklistA
             }
         },
         confirmButton = { TextButton(onClick = { onSave(initial.copy(status = initial.status, observation = observation,
-            correctiveAction = action, responsible = responsible, dueDate = dueDate, photoUri = photoUris.firstOrNull().orEmpty(), photoUris = photoUris.toList())) }) { Text(if (initial.status == "Conforme") "Guardar detalle" else "Guardar hallazgo") } },
+            photoUri = photoUris.firstOrNull().orEmpty(), photoUris = photoUris.toList())) }) { Text(if (initial.status == "Conforme") "Guardar detalle" else "Guardar hallazgo") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
 }
