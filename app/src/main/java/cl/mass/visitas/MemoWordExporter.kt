@@ -1,0 +1,82 @@
+package cl.mass.visitas
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.net.Uri
+import cl.mass.visitas.data.ChecklistQuestion
+import cl.mass.visitas.data.StoreVisit
+import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+
+object MemoWordExporter {
+    private fun esc(s: String) = s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+    private fun para(s: String, style: String = "") = "<w:p><w:pPr><w:pStyle w:val=\"$style\"/></w:pPr><w:r><w:t xml:space=\"preserve\">${esc(s)}</w:t></w:r></w:p>"
+    fun create(context: Context, visit: StoreVisit, questions: List<ChecklistQuestion>): File {
+        val parts = mutableListOf<String>()
+        val images = mutableListOf<Pair<String, ByteArray>>()
+        parts += para("MEMORÁNDUM DE VISITA A TIENDA", "Title")
+        listOf("Jefe de Ventas" to visit.salesLead, "Supervisor Zonal" to visit.zonalSupervisor,
+            "Tienda" to visit.store, "Administrador" to visit.administrator, "Fecha" to visit.date).forEach { (k,v) -> parts += para("$k: $v") }
+        parts += para("INDICADORES DEL PERIODO", "Heading1")
+        parts += para("Venta del periodo (S/): ${visit.salesActual} | Merma del periodo (%): ${visit.shrinkPercent} | Antigüedad (meses): ${visit.ageMonths}")
+        val active = questions.filter { it.active }
+        active.groupBy { it.section }.forEach { (section, qs) ->
+            parts += para(section, "Heading1")
+            qs.forEach { q -> visit.answers[q.id]?.let { a ->
+                if (a.status != "N/A") {
+                    parts += para(q.text, "Heading2")
+                    parts += para("Estado: ${a.status}")
+                    if (a.observation.isNotBlank()) parts += para("Observación: ${a.observation}")
+                    if (a.correctiveAction.isNotBlank()) parts += para("Acción correctiva: ${a.correctiveAction}")
+                    if (a.responsible.isNotBlank()) parts += para("Responsable: ${a.responsible} | Compromiso: ${a.dueDate}")
+                }
+            } }
+        }
+        parts += para("QUIEBRES DE MERCADERÍA", "Heading1")
+        visit.stockBreaks.forEach { parts += para("${it.code} | ${it.description} | ${it.status}") }
+        parts += para("CUADERNO DE VISITAS", "Heading1")
+        parts += para("Registrado: ${visit.visitBookStatus}. ${visit.visitBookObservation}")
+        parts += para("RESUMEN / COMPROMISOS", "Heading1")
+        parts += para(visit.summaryCommitments)
+        val photos = active.flatMap { q -> visit.answers[q.id]?.let { a ->
+            a.photoUris.ifEmpty { listOfNotNull(a.photoUri.takeIf { it.isNotBlank() }) }.map { q.section to it }
+        } ?: emptyList() }
+        if (photos.isNotEmpty()) {
+            parts += "<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>"
+            parts += para("ANEXOS FOTOGRÁFICOS", "Heading1")
+            photos.forEachIndexed { i, (section, uri) ->
+                val bytes = runCatching {
+                    if (uri.startsWith("content://")) context.contentResolver.openInputStream(Uri.parse(uri))?.use { it.readBytes() }
+                    else File(uri).readBytes()
+                }.getOrNull()
+                if (bytes != null) {
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bitmap != null) {
+                        val name = "image${images.size+1}.jpg"
+                        val out = java.io.ByteArrayOutputStream()
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                        val imageBytes = out.toByteArray()
+                        bitmap.recycle()
+                        images += name to imageBytes
+                        val rid = "rId${images.size}"
+                        parts += para("Figura ${i+1}. $section", "Caption")
+                        parts += """<w:p><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="4572000" cy="3429000"/><wp:docPr id="${i+1}" name="Foto ${i+1}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="$name"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="$rid"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="3429000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"""
+                    }
+                }
+            }
+        }
+        val dir = File(context.cacheDir, "memos").apply { mkdirs() }
+        val file = File(dir, "Memo_${visit.store.replace(Regex("[^A-Za-z0-9_-]"),"_").take(40)}_${visit.date}.docx")
+        ZipOutputStream(file.outputStream()).use { zip ->
+            fun add(name: String, content: ByteArray) { zip.putNextEntry(ZipEntry(name)); zip.write(content); zip.closeEntry() }
+            fun addText(name: String, content: String) = add(name, content.toByteArray(Charsets.UTF_8))
+            addText("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>""")
+            addText("_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>""")
+            addText("word/document.xml", """<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${parts.joinToString("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>""")
+            addText("word/_rels/document.xml.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${images.mapIndexed { i,(name,_) -> "<Relationship Id=\"rId${i+1}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/$name\"/>" }.joinToString("")}</Relationships>""")
+            images.forEach { (name,bytes) -> add("word/media/$name", bytes) }
+        }
+        return file
+    }
+}
