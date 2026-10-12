@@ -12,6 +12,13 @@ import java.util.zip.ZipOutputStream
 object MemoWordExporter {
     private fun esc(s: String) = s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
     private fun para(s: String, style: String = "") = "<w:p><w:pPr><w:pStyle w:val=\"$style\"/></w:pPr><w:r><w:t xml:space=\"preserve\">${esc(s)}</w:t></w:r></w:p>"
+    private fun initials(name: String): String {
+        val words = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        return if (words.size >= 2) "${words.first().first().uppercaseChar()}.${words.last().first().uppercaseChar()}."
+        else words.firstOrNull()?.take(1)?.uppercase()?.plus(".") ?: ""
+    }
+    private fun table(rows: List<List<String>>): String = "<w:tbl><w:tblPr><w:tblBorders><w:top w:val=\"single\"/><w:left w:val=\"single\"/><w:bottom w:val=\"single\"/><w:right w:val=\"single\"/><w:insideH w:val=\"single\"/><w:insideV w:val=\"single\"/></w:tblBorders></w:tblPr>" +
+        rows.joinToString("") { row -> "<w:tr>" + row.joinToString("") { cell -> "<w:tc><w:p><w:r><w:t>${esc(cell)}</w:t></w:r></w:p></w:tc>" } + "</w:tr>" } + "</w:tbl>"
     fun create(context: Context, visit: StoreVisit, questions: List<ChecklistQuestion>): File {
         val parts = mutableListOf<String>()
         val images = mutableListOf<Pair<String, ByteArray>>()
@@ -34,7 +41,7 @@ object MemoWordExporter {
             } }
         }
         parts += para("QUIEBRES DE MERCADERÍA", "Heading1")
-        visit.stockBreaks.forEach { parts += para("${it.code} | ${it.description} | ${it.status}") }
+        parts += table(listOf(listOf("Código", "Descripción", "Estado")) + visit.stockBreaks.map { listOf(it.code, it.description, it.status) })
         parts += para("CUADERNO DE VISITAS", "Heading1")
         parts += para("Registrado: ${visit.visitBookStatus}. ${visit.visitBookObservation}")
         parts += para("RESUMEN / COMPROMISOS", "Heading1")
@@ -68,13 +75,16 @@ object MemoWordExporter {
         }
         val dir = File(context.cacheDir, "memos").apply { mkdirs() }
         val file = File(dir, "Memo_${visit.store.replace(Regex("[^A-Za-z0-9_-]"),"_").take(40)}_${visit.date}.docx")
+        val footer = initials(visit.salesLead)
         ZipOutputStream(file.outputStream()).use { zip ->
             fun add(name: String, content: ByteArray) { zip.putNextEntry(ZipEntry(name)); zip.write(content); zip.closeEntry() }
             fun addText(name: String, content: String) = add(name, content.toByteArray(Charsets.UTF_8))
-            addText("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>""")
+            addText("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>""")
             addText("_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>""")
-            addText("word/document.xml", """<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${parts.joinToString("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>""")
-            addText("word/_rels/document.xml.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${images.mapIndexed { i,(name,_) -> "<Relationship Id=\"rId${i+1}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/$name\"/>" }.joinToString("")}</Relationships>""")
+            addText("word/document.xml", """<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${parts.joinToString("")}<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>""")
+            addText("word/styles.xml", """<?xml version="1.0" encoding="UTF-8"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>""")
+            addText("word/footer1.xml", """<?xml version="1.0" encoding="UTF-8"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>${footer}</w:t></w:r></w:p></w:ftr>""")
+            addText("word/_rels/document.xml.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${images.mapIndexed { i,(name,_) -> "<Relationship Id=\"rId${i+1}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/$name\"/>" }.joinToString("")}</Relationships>""")
             images.forEach { (name,bytes) -> add("word/media/$name", bytes) }
         }
         return file
