@@ -523,7 +523,7 @@ private fun MemoScreen(visits: List<StoreVisit>, questions: List<ChecklistQuesti
                 runCatching {
                     val file = MemoWordExporter.create(context, visit, questions)
                     val safeStore = visit.store.replace(Regex("[^A-Za-z0-9_-]"), "_").take(40)
-                    val fileName = "Memo_${safeStore}_${visit.date}.docx"
+                    val fileName = "Memo_Visita_${safeStore}_${visit.date}.docx"
                     val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         val values = android.content.ContentValues().apply {
                             put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
@@ -531,10 +531,10 @@ private fun MemoScreen(visits: List<StoreVisit>, questions: List<ChecklistQuesti
                             put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/Visitas Mass")
                         }
                         val outUri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                            ?: error("No se pudo crear el PDF en Descargas")
+                            ?: error("No se pudo crear el Word en Descargas")
                         context.contentResolver.openOutputStream(outUri)?.use { out ->
                             file.inputStream().use { it.copyTo(out) }
-                        } ?: error("No se pudo guardar el PDF")
+                        } ?: error("No se pudo guardar el Word")
                         outUri
                     } else {
                         androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
