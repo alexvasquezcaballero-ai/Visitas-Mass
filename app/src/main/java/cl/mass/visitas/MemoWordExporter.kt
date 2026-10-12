@@ -74,7 +74,7 @@ object MemoWordExporter {
             }
         }
         val dir = File(context.cacheDir, "memos").apply { mkdirs() }
-        val file = File(dir, "Memo_${visit.store.replace(Regex("[^A-Za-z0-9_-]"),"_").take(40)}_${visit.date}.docx")
+        val file = File(dir, "Memo_Visita_${visit.store.replace(Regex("[^A-Za-z0-9_-]"),"_").take(40)}_${visit.date}.docx")
         val footer = initials(visit.salesLead)
         ZipOutputStream(file.outputStream()).use { zip ->
             fun add(name: String, content: ByteArray) { zip.putNextEntry(ZipEntry(name)); zip.write(content); zip.closeEntry() }
