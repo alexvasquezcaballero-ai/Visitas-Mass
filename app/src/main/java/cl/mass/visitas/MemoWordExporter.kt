@@ -51,7 +51,7 @@ object MemoWordExporter {
         } ?: emptyList() }
         if (photos.isNotEmpty()) {
             parts += "<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>"
-            parts += para("ANEXOS FOTOGRÁFICOS", "Heading1")
+            parts += para("Anexos Fotográficos", "Heading1")
             photos.forEachIndexed { i, (section, uri) ->
                 val bytes = runCatching {
                     if (uri.startsWith("content://")) context.contentResolver.openInputStream(Uri.parse(uri))?.use { it.readBytes() }
@@ -67,8 +67,13 @@ object MemoWordExporter {
                         bitmap.recycle()
                         images += name to imageBytes
                         val rid = "rId${images.size}"
-                        parts += para("Figura ${i+1}. $section", "Caption")
-                        parts += """<w:p><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="4572000" cy="3429000"/><wp:docPr id="${i+1}" name="Foto ${i+1}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="$name"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="$rid"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="4572000" cy="3429000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"""
+                        parts += para("Anexo ${i+1}. $section", "Caption")
+                        val maxWidth = 4572000L
+                        val maxHeight = 5486400L
+                        val scale = minOf(maxWidth.toDouble() / bitmap.width.coerceAtLeast(1), maxHeight.toDouble() / bitmap.height.coerceAtLeast(1))
+                        val photoWidth = (bitmap.width * scale).toLong()
+                        val photoHeight = (bitmap.height * scale).toLong()
+                        parts += """<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="$photoWidth" cy="$photoHeight"/><wp:docPr id="${i+1}" name="Foto ${i+1}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="$name"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="$rid"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="$photoWidth" cy="$photoHeight"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"""
                     }
                 }
             }
