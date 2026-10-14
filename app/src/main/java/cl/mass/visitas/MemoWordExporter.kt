@@ -28,8 +28,17 @@ object MemoWordExporter {
         parts += para("INDICADORES DEL PERIODO", "Heading1")
         parts += para("Venta del periodo (S/): ${visit.salesActual} | Merma del periodo (%): ${visit.shrinkPercent} | Antigüedad (meses): ${visit.ageMonths}")
         val active = questions.filter { it.active }
-        active.groupBy { it.section }.forEach { (section, qs) ->
-            parts += para(section, "Heading1")
+        val standardOrder = listOf(
+            "Fachada e ingreso", "Atención al cliente y protocolo de cajas", "Zona de cajas",
+            "Reposición y exhibición de mercadería", "Equipos de frío", "Almacén, oficina y baños",
+            "Limpieza de tienda", "Cartelería", "Seguimiento y comunicación interna",
+            "Personas y presentación personal"
+        )
+        active.groupBy { it.section }.toList().sortedBy { (section, _) ->
+            standardOrder.indexOfFirst { it.equals(section.trim(), ignoreCase = true) }
+                .let { if (it < 0) Int.MAX_VALUE else it }
+        }.forEachIndexed { index, (section, qs) ->
+            parts += para("${index + 1}. $section", "Heading1")
             qs.forEach { q -> visit.answers[q.id]?.let { a ->
                 if (a.status != "N/A") {
                     parts += para(q.text, "Heading2")
@@ -40,11 +49,11 @@ object MemoWordExporter {
                 }
             } }
         }
-        parts += para("QUIEBRES DE MERCADERÍA", "Heading1")
+        parts += para("11. Quiebres de mercadería", "Heading1")
         parts += table(listOf(listOf("Código", "Descripción", "Estado")) + visit.stockBreaks.map { listOf(it.code, it.description, it.status) })
-        parts += para("CUADERNO DE VISITAS", "Heading1")
+        parts += para("12. Cuaderno de visitas", "Heading1")
         parts += para("Registrado: ${visit.visitBookStatus}. ${visit.visitBookObservation}")
-        parts += para("RESUMEN / COMPROMISOS", "Heading1")
+        parts += para("13. Resumen / compromisos", "Heading1")
         parts += para(visit.summaryCommitments)
         val photos = active.flatMap { q -> visit.answers[q.id]?.let { a ->
             a.photoUris.ifEmpty { listOfNotNull(a.photoUri.takeIf { it.isNotBlank() }) }.map { q.section to it }
