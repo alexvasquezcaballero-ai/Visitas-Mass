@@ -41,7 +41,7 @@ object MemoWordExporter {
             parts += para("${index + 1}. $section", "Heading1")
             qs.forEach { q -> visit.answers[q.id]?.let { a ->
                 if (a.status != "N/A") {
-                    parts += para(q.text, "Heading2")
+                    // La descripción del criterio se muestra en la app, no en el memorándum.
                     parts += para("Estado: ${a.status}")
                     if (a.observation.isNotBlank()) parts += para(a.observation)
                     if (a.correctiveAction.isNotBlank()) parts += para("Acción correctiva: ${a.correctiveAction}")
