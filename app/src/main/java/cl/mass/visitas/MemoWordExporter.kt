@@ -43,7 +43,7 @@ object MemoWordExporter {
                 if (a.status != "N/A") {
                     parts += para(q.text, "Heading2")
                     parts += para("Estado: ${a.status}")
-                    if (a.observation.isNotBlank()) parts += para("Observación: ${a.observation}")
+                    if (a.observation.isNotBlank()) parts += para(a.observation)
                     if (a.correctiveAction.isNotBlank()) parts += para("Acción correctiva: ${a.correctiveAction}")
                     if (a.responsible.isNotBlank()) parts += para("Responsable: ${a.responsible} | Compromiso: ${a.dueDate}")
                 }
